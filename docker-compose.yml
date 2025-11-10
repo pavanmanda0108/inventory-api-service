@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_CLIENT=sqlite3
+      - DB_FILENAME=/data/products.db
+      - LOG_LEVEL=info
+    volumes:
+      - ./data:/data
+    ports:
+      - "3000:3000"
