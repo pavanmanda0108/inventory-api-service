@@ -1,34 +1,47 @@
-// src/db/knexfile.ts
-import { env } from "../config";
-import type { Knex } from "knex";
-import path from "path";
-import fs from "fs";
+import type { Knex } from 'knex';
+import path from 'path';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-const dbFile = path.isAbsolute(env.db.filename)
-  ? env.db.filename
-  : path.resolve(process.cwd(), env.db.filename);
+// load project-root .env reliably even when CWD changes
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Ensure directory exists (SQLite won't create parent dirs)
-fs.mkdirSync(path.dirname(dbFile), { recursive: true });
+const connection =
+  process.env.DATABASE_URL ||
+  {
+    host: process.env.PGHOST || '127.0.0.1',
+    port: Number(process.env.PGPORT || 5432),
+    user: process.env.PGUSER || 'postgres',
+    password: process.env.PGPASSWORD || '',
+    database: process.env.PGDATABASE || 'inventory_db',
+  };
 
-// Helpful for debugging: show where we’re writing the DB
-if (process.env.NODE_ENV !== "test") {
-  // eslint-disable-next-line no-console
-  console.log("[knex] Using SQLite file:", dbFile);
+const devConfig: Knex.Config = {
+  client: 'pg',
+  connection,
+  pool: { min: 2, max: 10 },
+  migrations: {
+    directory: './data/migrations',
+    extension: 'ts',
+  },
+  seeds: {
+    directory: './data/seeds',
+    extension: 'ts',
+  },
+};
+
+// If using DATABASE_URL (e.g., Supabase), enable SSL for dev (safe for local dev)
+if (process.env.DATABASE_URL) {
+  // @ts-ignore
+  devConfig.ssl = { rejectUnauthorized: false };
 }
 
-const config: Knex.Config = {
-  client: env.db.client,
-  connection: env.db.client === "sqlite3"
-    ? { filename: dbFile }
-    : (process.env.DATABASE_URL as any),
-  useNullAsDefault: true,
-  migrations: { directory: __dirname + "/migrations" },
-  seeds: { directory: __dirname + "/seeds" },
-  pool: { min: 1, max: 5 }
+const config: { [key: string]: Knex.Config } = {
+  development: devConfig,
+  production: devConfig,
 };
 
 export default config;
+
 // For CLI
 module.exports = config;
-
