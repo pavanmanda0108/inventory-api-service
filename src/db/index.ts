@@ -1,5 +1,6 @@
+// src/db/index.ts
 import knex, { Knex } from 'knex';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 dotenv.config();
 
 const connection =
@@ -12,12 +13,19 @@ const connection =
     database: process.env.PGDATABASE || 'inventory_db',
   };
 
-const db: Knex = knex({
+const config: Knex.Config = {
   client: 'pg',
   connection,
   pool: { min: 2, max: 10 },
-  // If you used sqlite migrations directory previously, keep it in knexfile for CLI
-});
+};
+
+// if using Supabase or any DATABASE_URL with TLS
+if (process.env.DATABASE_URL) {
+  // @ts-ignore
+  config.ssl = { rejectUnauthorized: false };
+}
+
+const db = knex(config);
 
 export default db;
 
